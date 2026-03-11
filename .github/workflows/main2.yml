@@ -1,4 +1,4 @@
-name:  cutiee with Cloudflared
+name: Butterfly Modern Terminal with Cloudflared
 
 on:
   workflow_dispatch:
@@ -18,12 +18,16 @@ jobs:
           sudo usermod -aG sudo ash
           echo "User 'ash' created successfully"
 
-      - name: Install Python and dependencies
+      - name: Install Python and pip
         run: |
           sudo apt-get update
-          sudo apt-get install -y python3 python3-pip
-          pip3 install webssh
-          echo "Webssh installed successfully"
+          sudo apt-get install -y python3 python3-pip python3-tornado libffi-dev
+          echo "Python installed successfully"
+
+      - name: Install Butterfly (Modern Terminal)
+        run: |
+          pip3 install butterfly
+          echo "Butterfly installed successfully"
 
       - name: Add Cloudflare GPG key
         run: |
@@ -49,79 +53,73 @@ jobs:
           sleep 3
           echo "Cloudflared service started"
 
-      - name: Start  service
+      - name: Start Butterfly on port 8080
         run: |
-          sudo systemctl start ssh
-          sudo systemctl enable ssh
-          echo "SSH service started"
-
-      - name: Setup cutiee directories
-        run: |
-          mkdir -p ~/.ssh
-          touch ~/.ssh/known_hosts
-          chmod 700 ~/.ssh
-          chmod 644 ~/.ssh/known_hosts
-
-      - name: Start cutiee on port 8080
-        run: |
-          python3 -m webssh --port=8080 --fbidhttp=false --policy=autoadd 2>&1 | tee /tmp/webssh.log &
+          # Start butterfly - ultra modern cutiee terminal replacement
+          butterfly.server.py --host=0.0.0.0 --port=8080 --unsecure 2>&1 &
           sleep 8
           
-          # Check if webssh is running
-          if pgrep -f "webssh" > /dev/null; then
+          if pgrep -f "butterfly" > /dev/null; then
             echo "================================"
-            echo "✓ WebSSH Terminal Running!"
+            echo "✓ Cutiee Ultra Modern Terminal!"
+            echo "================================"
             echo "Port: 8080"
-            echo "✓ Mobile-friendly"
-            echo "✓ Multiple sessions"
+            echo "Username: ash"
+            echo "Password: root"
+            echo ""
+            echo "Features:"
+            echo "✓ Beautiful modern UI"
+            echo "✓ Perfect mobile experience"
+            echo "✓ Touch gestures support"
+            echo "✓ Multiple tabs"
+            echo "✓ Themes & customization"
+            echo "✓ File browser included"
+            echo "✓ Syntax highlighting"
             echo "✓ Responsive design"
-            echo "✓ Copy/Paste support"
-            echo "✓ Touch keyboard support"
             echo "================================"
           else
-            echo "ERROR: WebSSH failed to start"
-            cat /tmp/webssh.log
+            echo "ERROR: Cutiee terminal failed to start"
             exit 1
           fi
 
-      - name: Display connection info
+      - name: Display system information
         run: |
           echo "================================"
-          echo "SSH Connection Details:"
-          echo "Hostname: localhost"
-          echo "Username: ash"
-          echo "Password: root"
-          echo "Port: 22"
+          echo "System Information:"
           echo "================================"
-          echo "Access via your Cloudflare Tunnel domain"
+          echo "OS: $(lsb_release -ds)"
+          echo "Kernel: $(uname -r)"
+          echo "Architecture: $(uname -m)"
+          echo "CPU Cores: $(nproc)"
+          echo "Total RAM: $(free -h | awk '/^Mem:/ {print $2}')"
+          echo "Available RAM: $(free -h | awk '/^Mem:/ {print $7}')"
+          echo "Disk Space: $(df -h / | awk 'NR==2 {print $4 " available"}')"
           echo "================================"
           echo ""
-          echo "System Info:"
-          echo "OS: $(lsb_release -d | cut -f2)"
-          echo "CPU Cores: $(nproc)"
-          echo "RAM: $(free -h | awk '/^Mem:/ {print $2}')"
+          echo "Access via Cloudflare Tunnel"
           echo "================================"
 
       - name: Keep alive for 6 hours
         run: |
           echo "Session will remain active for 6 hours"
-          echo "Started at: $(date '+%Y-%m-%d %H:%M:%S')"
+          echo "Started at: $(date '+%Y-%m-%d %H:%M:%S %Z')"
           echo ""
-          echo "Monitoring cutiee process..."
           
-          # Keep alive and monitor
           for i in {1..360}; do
             sleep 60
-            if ! pgrep -f "webssh" > /dev/null; then
-              echo "WARNING: cutiee process died, restarting..."
-              python3 -m webssh --port=8080 --fbidhttp=false --policy=autoadd &
+            
+            if ! pgrep -f "butterfly" > /dev/null; then
+              echo "⚠ WARNING: Cutiee terminal stopped, restarting..."
+              butterfly.server.py --host=0.0.0.0 --port=8080 --unsecure &
               sleep 5
             fi
             
-            # Print status every 30 minutes
             if [ $((i % 30)) -eq 0 ]; then
-              echo "Still alive - $(date '+%Y-%m-%d %H:%M:%S') - $((i/6)) hours elapsed"
+              hours=$((i / 60))
+              minutes=$((i % 60))
+              echo "✓ Status: Active - ${hours}h ${minutes}m elapsed - $(date '+%H:%M:%S')"
             fi
           done
           
-          echo "Session ended at: $(date '+%Y-%m-%d %H:%M:%S')"
+          echo ""
+          echo "Session completed at: $(date '+%Y-%m-%d %H:%M:%S %Z')"
