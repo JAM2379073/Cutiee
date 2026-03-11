@@ -1,4 +1,4 @@
-name: cutiee with Cloudflared
+name:  cutiee with Cloudflared
 
 on:
   workflow_dispatch:
@@ -16,17 +16,13 @@ jobs:
           sudo useradd -m -s /bin/bash ash
           echo 'ash:root' | sudo chpasswd
           sudo usermod -aG sudo ash
+          echo "User 'ash' created successfully"
 
-      - name: Install Node.js and dependencies
-        run: |
-          curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-          sudo apt-get install -y nodejs build-essential
-
-      - name: Install Webssh (Python-based, very responsive)
+      - name: Install Python and dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y python3 python3-pip
-          sudo pip3 install webssh
+          pip3 install webssh
           echo "Webssh installed successfully"
 
       - name: Add Cloudflare GPG key
@@ -41,6 +37,7 @@ jobs:
       - name: Install cloudflared
         run: |
           sudo apt-get update && sudo apt-get install -y cloudflared
+          echo "Cloudflared installed successfully"
 
       - name: Install cloudflared service
         run: |
@@ -50,40 +47,81 @@ jobs:
         run: |
           sudo systemctl start cloudflared
           sleep 3
+          echo "Cloudflared service started"
 
       - name: Start  service
         run: |
           sudo systemctl start ssh
           sudo systemctl enable ssh
+          echo "SSH service started"
 
-      - name: Start  on port 8080
+      - name: Setup cutiee directories
         run: |
-          wssh --port=8080 --fbidhttp=false --policy=autoadd &
-          sleep 5
-          echo "================================"
-          echo "WebSSH Terminal Running!"
-          echo "Port: 8080"
-          echo "✓ Mobile-friendly"
-          echo "✓ Multiple sessions"
-          echo "✓ Responsive design"
-          echo "✓ Copy/Paste support"
-          echo "================================"
+          mkdir -p ~/.ssh
+          touch ~/.ssh/known_hosts
+          chmod 700 ~/.ssh
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Start cutiee on port 8080
+        run: |
+          python3 -m webssh --port=8080 --fbidhttp=false --policy=autoadd 2>&1 | tee /tmp/webssh.log &
+          sleep 8
+          
+          # Check if webssh is running
+          if pgrep -f "webssh" > /dev/null; then
+            echo "================================"
+            echo "✓ WebSSH Terminal Running!"
+            echo "Port: 8080"
+            echo "✓ Mobile-friendly"
+            echo "✓ Multiple sessions"
+            echo "✓ Responsive design"
+            echo "✓ Copy/Paste support"
+            echo "✓ Touch keyboard support"
+            echo "================================"
+          else
+            echo "ERROR: WebSSH failed to start"
+            cat /tmp/webssh.log
+            exit 1
+          fi
 
       - name: Display connection info
         run: |
           echo "================================"
-          echo "SSH Credentials:"
+          echo "SSH Connection Details:"
           echo "Hostname: localhost"
           echo "Username: ash"
           echo "Password: root"
           echo "Port: 22"
           echo "================================"
-          echo "Access via your Cloudflare domain"
+          echo "Access via your Cloudflare Tunnel domain"
+          echo "================================"
+          echo ""
+          echo "System Info:"
+          echo "OS: $(lsb_release -d | cut -f2)"
+          echo "CPU Cores: $(nproc)"
+          echo "RAM: $(free -h | awk '/^Mem:/ {print $2}')"
           echo "================================"
 
       - name: Keep alive for 6 hours
         run: |
           echo "Session will remain active for 6 hours"
           echo "Started at: $(date '+%Y-%m-%d %H:%M:%S')"
-          sleep 21600
+          echo ""
+          echo "Monitoring cutiee process..."
+          
+          # Keep alive and monitor
+          for i in {1..360}; do
+            sleep 60
+            if ! pgrep -f "webssh" > /dev/null; then
+              echo "WARNING: cutiee process died, restarting..."
+              python3 -m webssh --port=8080 --fbidhttp=false --policy=autoadd &
+              sleep 5
+            fi
+            
+            # Print status every 30 minutes
+            if [ $((i % 30)) -eq 0 ]; then
+              echo "Still alive - $(date '+%Y-%m-%d %H:%M:%S') - $((i/6)) hours elapsed"
+            fi
+          done
+          
           echo "Session ended at: $(date '+%Y-%m-%d %H:%M:%S')"
