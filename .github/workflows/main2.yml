@@ -1,0 +1,89 @@
+name: cutiee with Cloudflared
+
+on:
+  workflow_dispatch:
+
+jobs:
+  terminal:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Create user 'ash' with password
+        run: |
+          sudo useradd -m -s /bin/bash ash
+          echo 'ash:root' | sudo chpasswd
+          sudo usermod -aG sudo ash
+
+      - name: Install Node.js and dependencies
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+          sudo apt-get install -y nodejs build-essential
+
+      - name: Install Webssh (Python-based, very responsive)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3 python3-pip
+          sudo pip3 install webssh
+          echo "Webssh installed successfully"
+
+      - name: Add Cloudflare GPG key
+        run: |
+          sudo mkdir -p --mode=0755 /usr/share/keyrings
+          curl -fsSL https://pkg.cloudflare.com/cloudflare-public-v2.gpg | sudo tee /usr/share/keyrings/cloudflare-public-v2.gpg >/dev/null
+
+      - name: Add Cloudflare repository
+        run: |
+          echo 'deb [signed-by=/usr/share/keyrings/cloudflare-public-v2.gpg] https://pkg.cloudflare.com/cloudflared any main' | sudo tee /etc/apt/sources.list.d/cloudflared.list
+
+      - name: Install cloudflared
+        run: |
+          sudo apt-get update && sudo apt-get install -y cloudflared
+
+      - name: Install cloudflared service
+        run: |
+          sudo cloudflared service install eyJhIjoiY2U5MWFiYmQyYWU3YjhlZjQxMmU0YWQxODJmYzUxYzciLCJ0IjoiMzYwNDk1MzYtMGQzYS00MjQ0LWEyMDQtODBkYjM4ODRmZjIzIiwicyI6Ik56UXdPREptWkdVdE9HTXhNeTAwTVRkbUxXRTBOamd0TURnMVpUSXpNV0V5TlRBeCJ9
+
+      - name: Start cloudflared service
+        run: |
+          sudo systemctl start cloudflared
+          sleep 3
+
+      - name: Start  service
+        run: |
+          sudo systemctl start ssh
+          sudo systemctl enable ssh
+
+      - name: Start  on port 8080
+        run: |
+          wssh --port=8080 --fbidhttp=false --policy=autoadd &
+          sleep 5
+          echo "================================"
+          echo "WebSSH Terminal Running!"
+          echo "Port: 8080"
+          echo "✓ Mobile-friendly"
+          echo "✓ Multiple sessions"
+          echo "✓ Responsive design"
+          echo "✓ Copy/Paste support"
+          echo "================================"
+
+      - name: Display connection info
+        run: |
+          echo "================================"
+          echo "SSH Credentials:"
+          echo "Hostname: localhost"
+          echo "Username: ash"
+          echo "Password: root"
+          echo "Port: 22"
+          echo "================================"
+          echo "Access via your Cloudflare domain"
+          echo "================================"
+
+      - name: Keep alive for 6 hours
+        run: |
+          echo "Session will remain active for 6 hours"
+          echo "Started at: $(date '+%Y-%m-%d %H:%M:%S')"
+          sleep 21600
+          echo "Session ended at: $(date '+%Y-%m-%d %H:%M:%S')"
