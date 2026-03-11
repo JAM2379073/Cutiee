@@ -1,0 +1,74 @@
+name: Cutieee Workflow 
+
+on:
+  workflow_dispatch:
+
+jobs:
+  terminal:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Create user 'ash' with password
+        run: |
+          sudo useradd -m -s /bin/bash ash
+          echo 'ash:root' | sudo chpasswd
+          sudo usermod -aG sudo ash
+
+      - name: Install cutiee
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ttyd
+
+      - name: Add Cloudflare GPG key
+        run: |
+          sudo mkdir -p --mode=0755 /usr/share/keyrings
+          curl -fsSL https://pkg.cloudflare.com/cloudflare-public-v2.gpg | sudo tee /usr/share/keyrings/cloudflare-public-v2.gpg >/dev/null
+
+      - name: Add Cloudflare repository
+        run: |
+          echo 'deb [signed-by=/usr/share/keyrings/cloudflare-public-v2.gpg] https://pkg.cloudflare.com/cloudflared any main' | sudo tee /etc/apt/sources.list.d/cloudflared.list
+
+      - name: Install cloudflare
+        run: |
+          sudo apt-get update && sudo apt-get install -y cloudflared
+
+      - name: Install cloudflared service
+        run: |
+          sudo cloudflared service install eyJhIjoiY2U5MWFiYmQyYWU3YjhlZjQxMmU0YWQxODJmYzUxYzciLCJ0IjoiMzYwNDk1MzYtMGQzYS00MjQ0LWEyMDQtODBkYjM4ODRmZjIzIiwicyI6Ik56UXdPREptWkdVdE9HTXhNeTAwTVRkbUxXRTBOamd0TURnMVpUSXpNV0V5TlRBeCJ9
+
+      - name: Start cloudflared service
+        run: |
+          sudo systemctl start cloudflared
+          sudo systemctl status cloudflared
+
+      - name: Start ttyd on port 8080
+        run: |
+          sudo ttyd -p 8080 -c ash:root bash &
+          sleep 5
+          echo "TTYd is running on port 8080"
+
+      - name: Setup ngrok for remote access
+        run: |
+          wget https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz
+          tar xvzf ngrok-v3-stable-linux-amd64.tgz
+          sudo mv ngrok /usr/local/bin/
+          
+      - name: Display connection info
+        run: |
+          echo "================================"
+          echo "TTYd Terminal is running!"
+          echo "User: ash"
+          echo "Password: root"
+          echo "Port: 8080"
+          echo "================================"
+          echo "Cloudflared tunnel should be active"
+          sudo cloudflared tunnel info || true
+          echo "================================"
+
+      - name: Keep alive for 6 hours
+        run: |
+          echo "Keeping session alive for 6 hours..."
+          sleep 21600
